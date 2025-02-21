@@ -7,17 +7,20 @@
 
 // トークンの種類
 typedef enum {
-  TK_RESERVED, // 記号
-  TK_NUM,      // 整数トークン
-  TK_EOF,      // 入力の終わりを表すトークン
+  	TK_RESERVED, // 記号
+  	TK_NUM,      // 整数トークン
+  	TK_EOF,      // 入力の終わりを表すトークン
 } Tokenkind;
 
 typedef struct Token {
-  Tokenkind kind;    // トークンの型
-  struct Token *next;// 次の入力トークン
-  int val;           // kindがTK_NUMの場合、その数値
-  char *str;         // トークン文字列
+	Tokenkind kind;    // 
+	struct Token *next;// 次の入力トークン
+  	int val;           // kindがTK_NUMの場合、その数値
+  	char *str;         // トークン文字列
 }Token;
+
+//入力プログラム
+char *user_input;
 
 // 現在注目しているトークン（グローバル変数）
 Token *token;
@@ -25,38 +28,52 @@ Token *token;
 // エラーを報告するための関数
 // printfと同じ引数をとる
 void error(char *fmt, ...) {
-  va_list ap;
-  va_start(ap, fmt);
-  vfprintf(stderr, fmt, ap);
-  fprintf(stderr, "\n");
-  exit(1);
+       	va_list ap;
+       	va_start(ap, fmt);
+       	vfprintf(stderr, fmt, ap);
+       	fprintf(stderr, "\n");
+   	exit(1);
+}
+
+//エラー箇所を報告する
+void error_at(char *loc, char *fmt, ...) {
+	va_list ap;
+	va_start(ap,fmt);
+
+	int pos = loc - user_input;
+	fprintf(stderr, "%s\n", user_input);
+	fprintf(stderr, "%*s", pos, ""); // pos個の空白を出力
+	fprintf(stderr, "^ ");
+	vfprintf(stderr, fmt, ap);
+	fprintf(stderr, "\n");
+	exit(1);
 }
 
 // 次のトークンが期待している記号のときには、トークンを1つ読み進めて
 // 真を返す。それ以外の場合には偽を返す。
 bool consume(char op) {
-  if (token->kind != TK_RESERVED || token->str[0] != op)
-    return false;
-  token = token->next;
-  return true;
+  	if (token->kind != TK_RESERVED || token->str[0] != op)
+		return false;
+  	token = token->next;
+  	return true;
 }
 
 // 次のトークンが期待している記号のときには、トークンを1つ読み進める。
 // それ以外の場合にはエラーを報告する。
 void expect(char op) {
-  if (token->kind != TK_RESERVED || token->str[0] != op)
-    error("'%c'ではありません", op);
-  token = token->next;
+  	if (token->kind != TK_RESERVED || token->str[0] != op)
+		error_at(token->str,"expected '%c'", op);
+  		token = token->next;
 }
 
 // 次のトークンが数値の場合、トークンを1つ読み進めてその数値を返す。
 // それ以外の場合にはエラーを報告する。
 int expect_number() {
-  if (token->kind != TK_NUM)
-    error("数ではありません");
-  int val = token->val;
-  token = token->next;
-  return val;
+  	if (token->kind != TK_NUM)
+		error_at(token->str, "数ではありません");
+  	int val = token->val;
+  	token = token->next;
+  	return val;
 }
 
 bool at_eof() {
@@ -65,42 +82,42 @@ bool at_eof() {
 
 // 新しいトークンを作成してcurrentに繋げる
 Token *new_token(Tokenkind kind, Token *cur, char *str) {
-  Token *tok = calloc(1, sizeof(Token));
-  tok->kind = kind;
-  tok->str = str;
-  cur->next = tok;
-  return tok;
+  	Token *tok = calloc(1, sizeof(Token));
+  	tok->kind = kind;
+  	tok->str = str;
+  	cur->next = tok;
+  	return tok;
 }
 
-// 入力文字列pをトークナイズしてそれを返す
-Token *tokenize(char *p) {
-  Token head;
-  head.next = NULL;
-  Token *cur = &head;
+//入力文字列をトークナイズしてそれを返す
+Token *tokenize() {
+	char *p = user_input;
+  	Token head;
+  	head.next = NULL;
+  	Token *cur = &head;
 
-  while (*p) {
-    // 空白文字をスキップ
-    if (isspace(*p)) {
-      p++;
-      continue;
-    }
+  	while (*p) {
+    		// 空白文字をスキップ
+    	if (isspace(*p)) {
+      		p++;
+      		continue;
+	}
+	if (*p == '+' || *p == '-') {
+      		cur = new_token(TK_RESERVED, cur, p++);
+      		continue;
+	}
 
-    if (*p == '+' || *p == '-') {
-      cur = new_token(TK_RESERVED, cur, p++);
-      continue;
-    }
+    	if (isdigit(*p)) {
+      		cur = new_token(TK_NUM, cur, p);
+      		cur->val = strtol(p, &p, 10);
+      		continue;
+	}
 
-    if (isdigit(*p)) {
-      cur = new_token(TK_NUM, cur, p);
-      cur->val = strtol(p, &p, 10);
-      continue;
-    }
-
-    error("トークナイズできません");
+    	error_at(p, "数ではありません");
   }
 
-  new_token(TK_EOF, cur, p);
-  return head.next;
+  	new_token(TK_EOF, cur, p);
+  	return head.next;
 }
 
 
@@ -111,7 +128,8 @@ int main(int argc, char **argv){
 	}
 
 	// トークナイズする
-	token = tokenize(argv[1]);
+	user_input = argv[1];
+	token = tokenize();
         
 	// アセンブリの前半部分を出力
 	printf(".intel_syntax noprefix\n");

@@ -158,9 +158,11 @@ Node *new_num(int val) {
 	return node;
 }
 
-Node *expr(); // expression :  expr = mul ("+" mul | "-" mul)*
-Node *mul(); // multiple    :  mul = primary ("*" primary | "/" primary)*
-Node *primary(); // primary :  primary = '(' expr ')' | num 
+Node *expr(); // expression      : expr    = mul ("+" mul | "-" mul)*
+Node *mul(); // multiple         : mul     = unary ("*" unary | "/" unary)* 
+Node *unary(); // unaty operater : unary   = ("+" | "-")? primary
+Node *primary(); // primary      : primary = num | "(" expr ")"
+
 
 Node *expr() {
   Node *node = mul();
@@ -176,16 +178,24 @@ Node *expr() {
 }
 
 Node *mul() {
-  Node *node = primary();
+  Node *node = unary();
 
   for (;;) {
     if (consume('*'))
-      node = new_binary(ND_MUL, node, primary());
+      node = new_binary(ND_MUL, node, unary());
     else if (consume('/'))
-      node = new_binary(ND_DIV, node, primary());
+      node = new_binary(ND_DIV, node, unary());
     else
       return node;
   }
+}
+
+Node *unary() {
+	if (consume('+'))
+		return primary(); // +xをxと考える
+	if (consume('-'))
+		return new_binary(ND_SUB, new_num(0), primary()); // -xを0-xと考える
+	return primary();
 }
 
 Node *primary() {
